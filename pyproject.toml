@@ -1,0 +1,92 @@
+[project]
+name = "hf-transformer-benchmark"
+version = "0.1.0"
+description = "How much performance do you lose by using smaller Transformers?"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+
+dependencies = [
+    # --- Hugging Face stack ---------------------------------------------- #
+    # transformers is capped below 5: this repo drives `Trainer` /
+    # `TrainingArguments` directly, which is the API surface most exposed to a
+    # major bump. `common.build_training_arguments` already absorbs keyword
+    # drift within the 4.x line (the 4.46 `evaluation_strategy` ->
+    # `eval_strategy` rename); the cap buys time for the rest. Raise it once a
+    # 5.x run comes back green.
+    "transformers>=4.40,<5",
+    "datasets>=2.18",
+    "evaluate>=0.4.1",
+    "accelerate>=0.26",       # required by transformers.Trainer
+    "tokenizers>=0.19",
+    "sentencepiece>=0.2",     # DeBERTa-v3's tokenizer; BERT/MiniLM use WordPiece and don't need it
+    "protobuf>=4.21",         # converting DeBERTa-v3's sentencepiece model to a fast tokenizer needs it
+
+    # --- modelling / numerics -------------------------------------------- #
+    "torch>=2.0",
+    "numpy>=1.24",
+    "scikit-learn>=1.3",      # accuracy/F1 fallback when `evaluate` can't reach the hub
+
+    # --- reporting ------------------------------------------------------- #
+    "pandas>=2.0",
+    "matplotlib>=3.7",
+]
+
+[project.optional-dependencies]
+# `uv sync --extra notebook` — only needed for notebooks/analysis.ipynb.
+notebook = [
+    "jupyter>=1.0",
+    "ipykernel>=6.29",
+]
+
+[project.urls]
+Homepage = "https://github.com/eigenthingy/Transformer-Efficiency-Benchmark"
+
+# --------------------------------------------------------------------------- #
+# uv
+# --------------------------------------------------------------------------- #
+[tool.uv]
+# This is an application (a set of scripts), not an importable library: there is
+# no package to build, so uv must not try. Without this, `uv sync` looks for a
+# build backend and fails.
+package = false
+
+# torch comes from PyTorch's own CPU index rather than PyPI.
+#
+# Why pin the variant at all: the default PyPI wheel differs by platform, so
+# "whatever pip gives you" is not reproducible across machines — and this repo's
+# whole output is timings, which are meaningless if the build underneath them
+# varies. CPU is the deliberate choice: the benchmark's premise is the
+# "GPU-poor" setting, and a CPU wheel is both smaller and free of CUDA
+# initialisation overhead on a machine with no GPU.
+#
+# On a CUDA machine, swap the index url for a matching build, e.g.
+#   url = "https://download.pytorch.org/whl/cu124"
+# and re-run `uv sync`. Nothing else changes; `check_env.py` reports which
+# device was actually used and `results/environment.json` records it.
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true            # only packages that name this index use it
+
+# --------------------------------------------------------------------------- #
+# Tooling conventions (not enforced in CI; here so editors agree)
+# --------------------------------------------------------------------------- #
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = [
+    "E501",   # line length is handled by the formatter
+    "B905",   # zip(...) without strict=: intentional, lengths are paired by construction
+]
+
+[tool.ruff.lint.per-file-ignores]
+# selftest.py deliberately reaches into module internals (`plotting._style_axes`,
+# `report.PREDICTIONS_DIR`) — testing sometimes requires it.
+"selftest.py" = ["SLF001"]

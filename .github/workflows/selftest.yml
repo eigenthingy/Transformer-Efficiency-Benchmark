@@ -1,0 +1,45 @@
+# Runs the analysis-layer self-test: statistics, report assembly, and every
+# figure, rendered in both themes.
+#
+# Deliberately does NOT train anything. `selftest.py` needs no `transformers`,
+# no dataset and no network, so it finishes in seconds and can gate every push —
+# which is the point: the parts most likely to break silently (the statistics
+# and the report) are exactly the parts a half-hour training run would otherwise
+# stand in front of.
+name: selftest
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies from the lockfile
+        run: uv sync --frozen
+
+      - name: Environment report
+        run: uv run python check_env.py
+
+      - name: Self-test
+        run: uv run python selftest.py
+
+      - name: Command-line surface still works
+        run: |
+          uv run python train.py --help > /dev/null
+          uv run python evaluate.py --help > /dev/null
+          uv run python report.py --help > /dev/null
+          uv run python run_benchmark.py --help > /dev/null

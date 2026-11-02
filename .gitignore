@@ -1,0 +1,23 @@
+# Fine-tuned weights: reproducible from train.py, far too big for git
+results/checkpoints/
+# --smoke runs: pipeline checks, meaningless numbers
+results/smoke/
+
+# Environments
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# Hugging Face caches, if HF_HOME is pointed at the repo
+.cache/
+wandb/
+
+# OS
+.DS_Store
+Thumbs.db

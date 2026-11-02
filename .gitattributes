@@ -1,0 +1,13 @@
+# Normalise line endings in the repository, so a checkout on Windows and one on
+# Linux produce identical files and diffs stay clean across contributors.
+* text=auto eol=lf
+
+# Binary: never touched.
+*.png binary
+*.npz binary
+*.safetensors binary
+
+# Generated: keep out of diff noise and out of language statistics.
+uv.lock          linguist-generated=true
+results/*.json   linguist-generated=true
+results/*.csv    linguist-generated=true
